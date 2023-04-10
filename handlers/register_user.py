@@ -32,7 +32,7 @@ class FSMRegForm(StatesGroup):
     fill_find_gender = State()
 
 
-@router.callback_query(Text(text='Регистрация'), StateFilter(default_state))
+@router.callback_query(Text(text='register'), StateFilter(default_state))
 async def process_register_user(callback: CallbackQuery, state: FSMContext):
     if is_user_db(callback.from_user.id):
         await callback.message.edit_text(text=LEXICON['already_reg'], reply_markup=create_inline_kb(2, 'Да', 'Нет'))
@@ -45,7 +45,7 @@ async def process_register_user(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
 async def process_cancel(message: Message, state: FSMContext):
-    await message.answer(text=LEXICON['/cancel'], reply_markup=create_inline_kb(1, **{"Регистрация": "Регистрация"}))
+    await message.answer(text=LEXICON['/cancel'], reply_markup=create_inline_kb(1, **{"register": "Регистрация"}))
     await state.clear()
 
 
@@ -53,7 +53,7 @@ async def process_cancel(message: Message, state: FSMContext):
 async def process_cancel_command(message: Message):
     await message.answer(text='Отменять нечего. Вы вне машины состояний\n\n'
                               'Чтобы перейти к заполнению анкеты - '
-                              'нажмите на кнопку ниже', reply_markup=create_inline_kb(1, 'Регистрация'))
+                              'нажмите на кнопку ниже', reply_markup=create_inline_kb(1, **{"register": "Регистрация"}))
 
 
 @router.message(StateFilter(FSMRegForm.fill_name), F.text.isalpha())

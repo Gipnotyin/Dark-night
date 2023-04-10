@@ -42,15 +42,15 @@ async def warning_update_form(message: Message):
 @router.callback_query(Text(text=['my_blank']))
 async def process_see_my_form(callback: CallbackQuery):
 
-    result = await output_user(callback)
-
+    result = await output_user(callback.from_user.id)
+    await callback.message.delete()
     if result:
         user_str = '{} {}, {}, {} группа, {} курс - \n{}'.format(result[1], result[2], result[9], result[3], result[5],
                                                                  result[6])
         await callback.message.answer_photo(photo=f'{result[4]}', caption=user_str,
-                                            reply_markup=create_inline_kb(2, **{'Редактировать': 'Редактировать',
+                                            reply_markup=create_inline_kb(2, **{'edit': 'Редактировать',
                                                                           'search': 'Начать просмотр анкет'}))
     else:
         await callback.message.edit_text(text='Похоже, что у вас нет анкеты, хотите создать?',
-                                         reply_markup=create_inline_kb(1, **{'Регистрация': 'Регистрация'}))
+                                         reply_markup=create_inline_kb(1, **{'register': 'Регистрация'}))
 

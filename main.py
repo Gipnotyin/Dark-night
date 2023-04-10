@@ -5,7 +5,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage, Redis
 
 from config.config import Config, load_config
-from handlers import handler, register_user, register_again, update_information_anketa, other_handlers
+from handlers import (handler, register_user, register_again, update_information_anketa, other_handlers,
+                      watching)
 
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,9 @@ def register_all_handlers(dp: Dispatcher) -> None:
     dp.include_router(register_user.router)
     dp.include_router(register_again.router)
     dp.include_router(update_information_anketa.router)
+    dp.include_router(watching.router)
     dp.include_router(other_handlers.router)
+
 
 
 async def main():

@@ -12,8 +12,8 @@ router: Router = Router()
 @router.message()
 async def other_message(message: Message):
     await message.answer(text=LEXICON['other'],
-                         reply_markup=create_inline_kb(1, **{'Регистрация': 'Регистрация',
-                                                             "Редактировать": "Редактировать анкету",
+                         reply_markup=create_inline_kb(1, **{'register': 'Регистрация',
+                                                             "edit": "Редактировать анкету",
                                                              "search": "Начать просмотр анкет",
                                                              "info": "Важная информация"}))
 

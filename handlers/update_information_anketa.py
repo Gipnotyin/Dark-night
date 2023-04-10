@@ -1,8 +1,6 @@
-import asyncio
-
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import StateFilter, or_f
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from aiogram.filters.state import State, StatesGroup
@@ -30,7 +28,7 @@ class FSMUpdate(StatesGroup):
     find_gender = State()
 
 
-@router.callback_query(Text(text='Редактировать'), StateFilter(default_state))
+@router.callback_query(Text(text='edit'), StateFilter(default_state))
 async def update_form(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer(text=LEXICON['update_form'],
@@ -85,8 +83,8 @@ async def process_choice(callback: CallbackQuery, state: FSMContext):
         case 'Меню':
             await callback.message.edit_text(text=LEXICON['menu'],
                                              reply_markup=create_inline_kb(1,
-                                                                           **{'Регистрация': 'Регистрация',
-                                                                              "Редактировать": "Редактировать",
+                                                                           **{'register': 'Регистрация',
+                                                                              "edit": "Редактировать",
                                                                               "search": "Начать просмотр анкет"}))
             await state.clear()
 

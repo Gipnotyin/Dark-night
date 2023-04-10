@@ -83,18 +83,33 @@ async def delete_user(callback: CallbackQuery):
         print(ex)
 
 
-async def output_user(callback: CallbackQuery):
+async def output_user(id_user: int) -> str:
     try:
         conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
                                       db=config.database.database, loop=loop)
         result: str = ""
         async with conn.cursor() as cursor:
-            user = f"SELECT * FROM users WHERE id_user={callback.from_user.id};"
+            user = f"SELECT * FROM users WHERE id_user={id_user};"
             await cursor.execute(user)
             result = await cursor.fetchone()
         return result
     except Exception as ex:
         print(ex)
+
+
+async def return_id_from(id_user: int) -> int | None:
+    try:
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
+        result: str = ""
+        async with conn.cursor() as cursor:
+            user = f'SELECT from_user_id FROM users WHERE id_user=%s'
+            await cursor.execute(user, (id_user,))
+            result = await cursor.fetchone()
+        return int(result[0]) if result else None
+    except Exception as ex:
+        print(ex)
+        return None
 
 
 async def update_user(id_user: int, request: str, *data: dict):
@@ -148,3 +163,40 @@ async def is_activ(callback: CallbackQuery) -> str:
             return ''
     except Exception as ex:
         print(ex)
+
+
+async def search_user(id_user: int, find_gender: str, gender: str) -> int | None:
+    try:
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
+        result: str = ''
+        async with conn.cursor() as cursor:
+            match find_gender:
+                case 'idk':
+                    request = f'''SELECT id_user 
+                    FROM users 
+                    WHERE activ = 1 
+                    AND id_user NOT IN (
+                        SELECT id_to 
+                        FROM likes 
+                        WHERE id_from = {id_user}
+                    )
+                    AND id_user != {id_user}
+                    AND (
+                        gender = 'female' AND (findgender = '{gender}' OR findgender = 'idk') OR
+                        gender = 'male' AND (findgender = '{gender}' OR findgender = 'idk')
+                    )
+                    ORDER BY RAND()
+                    LIMIT 1;'''
+                case _:
+                    request = f'''SELECT id_user FROM users WHERE findgender = {find_gender} AND gender = {gender} 
+                    AND activ = 1 AND id_user NOT
+                     IN (SELECT id_to FROM likes WHERE id_from = {id_user})
+                     ORDER BY RAND()
+                     LIMIT 1;'''
+            await cursor.execute(request)
+            result = await cursor.fetchone()
+        return result[0] if result else None
+    except Exception as ex:
+        print(ex)
+        return None
