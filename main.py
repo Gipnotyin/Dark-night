@@ -7,19 +7,19 @@ from aiogram.fsm.storage.redis import RedisStorage, Redis
 from config.config import Config, load_config
 from handlers import (handler, register_user, register_again, update_information_anketa, other_handlers,
                       watching)
+from keyboard.main_menu import set_main_menu
 
 
 logger = logging.getLogger(__name__)
 
 
-def register_all_handlers(dp: Dispatcher) -> None:
+def register_all_routers(dp: Dispatcher) -> None:
     dp.include_router(handler.router)
     dp.include_router(register_user.router)
     dp.include_router(register_again.router)
     dp.include_router(update_information_anketa.router)
     dp.include_router(watching.router)
     dp.include_router(other_handlers.router)
-
 
 
 async def main():
@@ -37,10 +37,9 @@ async def main():
     storage: RedisStorage = RedisStorage(redis=redis)
     dp: Dispatcher = Dispatcher(storage=storage)
 
+    await set_main_menu(bot)
 
-    #await set_main_menu(dp)
-
-    register_all_handlers(dp)
+    register_all_routers(dp)
 
     try:
         await bot.delete_webhook(drop_pending_updates=True)

@@ -8,7 +8,7 @@ from aiogram.filters.state import State, StatesGroup
 from aiogram.types import (CallbackQuery, Message)
 
 from lexicon.lexicon import LEXICON
-from keyboard.keyboard import create_inline_kb, create_tipical_keyboard
+from keyboard.keyboard import create_inline_kb
 from servises.servises import isCorrectGroup
 from database.database import add_user, is_user_db
 
@@ -35,7 +35,8 @@ class FSMRegForm(StatesGroup):
 @router.callback_query(Text(text='register'), StateFilter(default_state))
 async def process_register_user(callback: CallbackQuery, state: FSMContext):
     if is_user_db(callback.from_user.id):
-        await callback.message.edit_text(text=LEXICON['already_reg'], reply_markup=create_inline_kb(2, 'Да', 'Нет'))
+        await callback.message.edit_text(text=LEXICON['already_reg'],
+                                         reply_markup=await create_inline_kb(2, 'Да', 'Нет'))
         await state.set_state(FSMUpdateForm.fill_update)
     else:
         await callback.message.edit_text(text=LEXICON['/register'])
@@ -45,15 +46,15 @@ async def process_register_user(callback: CallbackQuery, state: FSMContext):
 
 @router.message(Command(commands='cancel'), ~StateFilter(default_state))
 async def process_cancel(message: Message, state: FSMContext):
-    await message.answer(text=LEXICON['/cancel'], reply_markup=create_inline_kb(1, **{"register": "Регистрация"}))
+    await message.answer(text=LEXICON['/cancel'],
+                         reply_markup=await create_inline_kb(1, **{"register": "Регистрация"}))
     await state.clear()
 
 
 @router.message(Command(commands='cancel'), StateFilter(default_state))
 async def process_cancel_command(message: Message):
-    await message.answer(text='Отменять нечего. Вы вне машины состояний\n\n'
-                              'Чтобы перейти к заполнению анкеты - '
-                              'нажмите на кнопку ниже', reply_markup=create_inline_kb(1, **{"register": "Регистрация"}))
+    await message.answer(text=LEXICON['cancel_error'],
+                         reply_markup=await create_inline_kb(1, **{"register": "Регистрация"}))
 
 
 @router.message(StateFilter(FSMRegForm.fill_name), F.text.isalpha())
@@ -116,8 +117,8 @@ async def warning_sent_course(message: Message):
 async def process_sent_group(message: Message, state: FSMContext):
     await state.update_data(group=message.text)
     
-    await message.answer(text=LEXICON['sent_gender'], reply_markup=create_inline_kb(2, **{'male': "Парень",
-                                                                                          'female': 'Девушка'}))
+    await message.answer(text=LEXICON['sent_gender'],
+                         reply_markup=await create_inline_kb(2, **{'male': "Парень", 'female': 'Девушка'}))
 
     await state.set_state(FSMRegForm.fill_gender)
 
@@ -133,16 +134,16 @@ async def process_sent_gender(callback: CallbackQuery, state: FSMContext):
     
     await callback.answer()
     await callback.message.edit_text(text=LEXICON['sent_findgender'],
-                                     reply_markup=create_inline_kb(2, **{'female': 'Девушек',
-                                                                         'male': 'Парней', 'idk': 'Всё равно'}))
+                                     reply_markup=await create_inline_kb(2, **{'female': 'Девушек',
+                                                                               'male': 'Парней', 'idk': 'Всё равно'}))
 
     await state.set_state(FSMRegForm.fill_find_gender)
 
 
 @router.message(StateFilter(FSMRegForm.fill_gender))
 async def warning_sent_gender(message: Message):
-    await message.answer(text=LEXICON['error_gender'], reply_markup=create_inline_kb(2, **{'male': 'Парень',
-                                                                                           'female': 'Девушка'}))
+    await message.answer(text=LEXICON['error_gender'],
+                         reply_markup=await create_inline_kb(2, **{'male': 'Парень', 'female': 'Девушка'}))
 
 
 @router.callback_query(StateFilter(FSMRegForm.fill_find_gender), Text(text=['female', 'male', 'idk']))
@@ -158,7 +159,7 @@ async def process_sent_find_gender(callback: CallbackQuery, state: FSMContext):
 @router.message(StateFilter(FSMRegForm.fill_find_gender))
 async def warning_sent_find_gender(message: Message):
     await message.answer(text=LEXICON['error_findgender'],
-                         reply_markup=create_inline_kb(2, **{'female': 'Девушек',
+                         reply_markup=await create_inline_kb(2, **{'female': 'Девушек',
                                                              'male': 'Парней', 'idk': 'Всё равно'}))
 
 
@@ -166,7 +167,8 @@ async def warning_sent_find_gender(message: Message):
 async def process_sent_photo(message: Message, state: FSMContext):
     await state.update_data(id_photo=message.photo[0].file_id, photo_unique_id=message.photo[0].file_unique_id)
     
-    await message.answer(text=LEXICON['sent_info'], reply_markup=create_inline_kb(1, **{'text': 'Оставить без текста'}))
+    await message.answer(text=LEXICON['sent_info'],
+                         reply_markup=await create_inline_kb(1, **{'text': 'Оставить без текста'}))
 
     await state.set_state(FSMRegForm.fill_info)
 
@@ -187,7 +189,7 @@ async def process_sent_info(message: Message, state: FSMContext):
     await state.clear()
 
     await message.answer(text=LEXICON['end_register'],
-                         reply_markup=create_inline_kb(2, **{"search": 'Начать просмотр анкет',
+                         reply_markup=await create_inline_kb(2, **{"search": 'Начать просмотр анкет',
                                                              "my_blank": 'Моя анкета'}))
 
 
@@ -202,11 +204,11 @@ async def process_sent_info(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
     await callback.message.edit_text(text=LEXICON['end_register'],
-                                     reply_markup=create_inline_kb(2, **{"search": 'Начать просмотр анкет',
+                                     reply_markup=await create_inline_kb(2, **{"search": 'Начать просмотр анкет',
                                                                          "my_blank": 'Моя анкета'}))
 
 
 @router.message(StateFilter(FSMRegForm.fill_info))
 async def warning_sent_info(message: Message):
     await message.answer(text=LEXICON['error_info'],
-                         reply_markup=create_inline_kb(1, **{'text': 'Оставить без текста'}))
+                         reply_markup=await create_inline_kb(1, **{'text': 'Оставить без текста'}))

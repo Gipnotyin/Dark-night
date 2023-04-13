@@ -4,13 +4,13 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from lexicon.lexicon import LEXICON
 
 
-def create_tipical_keyboard(*buttons: str) -> ReplyKeyboardMarkup:
+async def create_tipical_keyboard(*buttons: str) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=[(LEXICON[button] if button in LEXICON else button) for button in buttons],
                                resize_keyboard=True,
                                one_time_keyboard=True)
 
 
-def create_inline_kb(width: int,
+async def create_inline_kb(width: int,
                      *args: str,
                      **kwargs: str) -> InlineKeyboardMarkup:
     kb_builder: InlineKeyboardBuilder = InlineKeyboardBuilder()
@@ -34,4 +34,10 @@ def create_inline_kb(width: int,
 
     # Возвращаем объект инлайн-клавиатуры
     return kb_builder.as_markup()
+
+
+async def create_url_marcup(id_user: int) -> InlineKeyboardMarkup:
+    profile_button_user_to = InlineKeyboardButton(text="Перейти к профилю", url=f"tg://user?id={id_user}")
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[profile_button_user_to]])
 

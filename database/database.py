@@ -1,12 +1,9 @@
 import asyncio
-import pymysql
 import aiomysql
 
-from aiogram.types import Message, CallbackQuery
-from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery
 
 from config.config import Config, load_config
-from keyboard.keyboard import create_inline_kb
 
 
 config: Config = load_config('.env')
@@ -35,10 +32,10 @@ async def add_user(id_user, *adata: dict):
 
             add_user_str = f'INSERT INTO users '\
                            f"VALUES({id_user}, %s, %s, %s, %s,"\
-                           f"%s, %s, %s, %s, %s, 1, 1);"
+                           f"%s, %s, %s, %s, %s, 1, 1, %s);"
 
             await cur.execute(add_user_str, (name, surname, group, photo_id, course, info, gender,
-                                             find_gender, age))
+                                             find_gender, age, None))
             await conn.commit()
 
         conn.close()
@@ -47,12 +44,12 @@ async def add_user(id_user, *adata: dict):
         print(ex, "addUser")
 
 
-def is_user_db(id: int) -> bool:
+async def is_user_db(id: int) -> bool:
     try:
-        conn = pymysql.connect(host=config.database.host, user=config.database.user, password=config.database.password,
-                               database=config.database.database)
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
         result: str
-        with conn.cursor() as cursor:
+        async with conn.cursor() as cursor:
             user_str = f"SELECT id_user FROM users WHERE id_user={id};"
             cursor.execute(user_str)
             result = cursor.fetchone()
@@ -148,6 +145,19 @@ async def update_user(id_user: int, request: str, *data: dict):
         print(ex)
 
 
+async def update_from_user_id(id_user: int, from_user_id: int | None) -> None:
+    try:
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
+        async with conn.cursor() as cursor:
+            request = 'UPDATE users SET from_user_id=%s WHERE id_user=%s'
+            await cursor.execute(request, (from_user_id, id_user))
+            await conn.commit()
+        conn.close()
+    except Exception as ex:
+        print(ex)
+
+
 async def is_activ(callback: CallbackQuery) -> str:
     try:
         conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
@@ -173,30 +183,129 @@ async def search_user(id_user: int, find_gender: str, gender: str) -> int | None
         async with conn.cursor() as cursor:
             match find_gender:
                 case 'idk':
-                    request = f'''SELECT id_user 
-                    FROM users 
-                    WHERE activ = 1 
-                    AND id_user NOT IN (
-                        SELECT id_to 
-                        FROM likes 
-                        WHERE id_from = {id_user}
-                    )
-                    AND id_user != {id_user}
-                    AND (
-                        gender = 'female' AND (findgender = '{gender}' OR findgender = 'idk') OR
-                        gender = 'male' AND (findgender = '{gender}' OR findgender = 'idk')
-                    )
-                    ORDER BY RAND()
-                    LIMIT 1;'''
+                    request = f'''
+                        SELECT id_user 
+                        FROM users 
+                        WHERE activ = 1 
+                        AND id_user NOT IN (
+                            SELECT id_to 
+                            FROM likes 
+                            WHERE id_from = {id_user}
+                        )
+                        AND id_user != {id_user}
+                        AND (
+                            gender = 'female' AND (findgender = 'male' OR findgender = 'idk') OR
+                            gender = 'male' AND (findgender = 'female' OR findgender = 'idk')
+                        )
+                        ORDER BY RAND()
+                        LIMIT 1;
+                    '''
                 case _:
-                    request = f'''SELECT id_user FROM users WHERE findgender = {find_gender} AND gender = {gender} 
-                    AND activ = 1 AND id_user NOT
-                     IN (SELECT id_to FROM likes WHERE id_from = {id_user})
-                     ORDER BY RAND()
-                     LIMIT 1;'''
+                    request = f'''
+                        SELECT id_user FROM users WHERE findgender = '{gender}' AND gender = '{find_gender}' 
+                        AND activ = 1 AND id_user NOT
+                         IN (SELECT id_to FROM likes WHERE id_from = {id_user})
+                         AND id_user != {id_user}
+                         ORDER BY RAND()
+                         LIMIT 1;
+                    '''
             await cursor.execute(request)
             result = await cursor.fetchone()
         return result[0] if result else None
     except Exception as ex:
         print(ex)
         return None
+
+
+async def process_add_is_like(id_user: int, from_user_id: int, is_like: bool) -> None:
+    try:
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
+        async with conn.cursor() as cursor:
+            request = f'INSERT INTO likes VALUES(%s, %s, %s);'
+            await cursor.execute(request, (int(id_user), int(from_user_id), is_like))
+            await conn.commit()
+        conn.close()
+    except Exception as ex:
+        print(ex)
+
+
+async def is_match(id_from: int, id_to: int) -> bool | None:
+    try:
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
+        async with conn.cursor() as cursor:
+            query = "SELECT is_like FROM likes WHERE id_from=%s AND id_to=%s"
+            params = (id_to, id_from)
+            await cursor.execute(query, params)
+            result = await cursor.fetchone()
+            return result[0]
+    except Exception as ex:
+        print(ex)
+        return None
+
+
+async def match(id_from: int, id_to: int, is_match: bool = True):
+    try:
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
+        async with conn.cursor() as cursor:
+            query = f'''
+                INSERT INTO matches (id_user, id_matched_user, is_match) VALUES ({id_from}, {id_to}, {is_match})
+            '''
+            await cursor.execute(query)
+            await conn.commit()
+        conn.close()
+    except Exception as ex:
+        print(ex)
+
+
+async def get_new_likes(id_user: int):
+    try:
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
+        async with conn.cursor() as cursor:
+            query = """
+                SELECT users.*, likes.is_like AS is_like
+                FROM users
+                INNER JOIN likes ON likes.id_from = users.id_user
+                LEFT JOIN matches ON matches.id_user = %s AND matches.id_matched_user = users.id_user
+                WHERE likes.id_to = %s AND matches.id IS NULL AND users.id_user != %s
+                ORDER BY RAND() LIMIT 1
+            """
+            params = (id_user, id_user, id_user)
+            await cursor.execute(query, params)
+            result = await cursor.fetchone()
+        conn.close()
+        print(result)
+        return result
+    except Exception as ex:
+        print(ex)
+        return []
+
+
+async def is_like_in_likes(id_from: int, id_to: int) -> bool:
+    try:
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
+        async with conn.cursor() as cursor:
+            query = 'SELECT is_like FROM likes WHERE id_from =%s AND id_to = %s;'
+            await cursor.execute(query, (id_from, id_to))
+            result = await cursor.fetchone()
+            return True if result else False
+    except Exception as ex:
+        print(ex)
+        return False
+
+
+async def update_is_like(id_from: int, id_to: int, is_like: bool = True) -> None:
+    try:
+        conn = await aiomysql.connect(user=config.database.user, password=config.database.password,
+                                      db=config.database.database, loop=loop)
+        async with conn.cursor() as cursor:
+            query = 'UPDATE likes SET is_like = %s WHERE id_from = %s AND id_to = %s;'
+            await cursor.execute(query, (id_from, id_to, is_like))
+            await conn.commit()
+        conn.close()
+    except Exception as ex:
+        print(ex)
