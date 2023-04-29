@@ -51,8 +51,8 @@ async def is_user_db(id: int) -> bool:
         result: str
         async with conn.cursor() as cursor:
             user_str = f"SELECT id_user FROM users WHERE id_user={id};"
-            cursor.execute(user_str)
-            result = cursor.fetchone()
+            await cursor.execute(user_str)
+            result = await cursor.fetchone()
 
         if result:
             print("f False", result)

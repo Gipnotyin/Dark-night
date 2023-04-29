@@ -32,9 +32,9 @@ class FSMRegForm(StatesGroup):
     fill_find_gender = State()
 
 
-@router.callback_query(Text(text='register'), StateFilter(default_state))
+@router.callback_query(Text(text='register'))
 async def process_register_user(callback: CallbackQuery, state: FSMContext):
-    if is_user_db(callback.from_user.id):
+    if await is_user_db(callback.from_user.id):
         await callback.message.edit_text(text=LEXICON['already_reg'],
                                          reply_markup=await create_inline_kb(2, 'Да', 'Нет'))
         await state.set_state(FSMUpdateForm.fill_update)
